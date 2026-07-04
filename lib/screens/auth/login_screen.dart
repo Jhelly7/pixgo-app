@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme.dart';
 import '../../providers/auth_provider.dart';
@@ -18,12 +20,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _showPw = false;
   String? _error;
 
+  @override
+  void dispose() {
+    _username.dispose();
+    _password.dispose();
+    super.dispose();
+  }
+
   Future<void> _submit() async {
     setState(() => _error = null);
     if (_username.text.trim().isEmpty || _password.text.isEmpty) return;
+    // Fecha o teclado/autofill explicitamente antes do pedido de rede —
+    // evita que o popup de sugestões do Android fique "preso" a meio.
+    FocusManager.instance.primaryFocus?.unfocus();
+    TextInput.finishAutofillContext();
     try {
       await ref.read(authProvider.notifier).login(_username.text.trim(), _password.text);
-      if (mounted) context.go('/main');
+      // Navegação após login é tratada pelo redirect central do router.
     } on ApiException catch (e) {
       setState(() {
         _error = e.status == 401 ? 'Usuário ou senha incorretos.' : 'Falha ao entrar. Tente novamente.';
@@ -56,17 +69,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Center(
-                      child: Text(
-                        'Pixgo',
-                        style: TextStyle(
-                          fontFamily: AppTheme.fontDisplay,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 30,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ),
+                    Center(child: SvgPicture.asset('assets/icons/logo.svg', height: 48)),
                     const SizedBox(height: 20),
                     const Text('Bem-vindo de volta',
                         style: TextStyle(
@@ -93,30 +96,48 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                       const SizedBox(height: 14),
                     ],
-                    const Text('Nome de usuário', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 6),
-                    TextField(
-                      controller: _username,
-                      autocorrect: false,
-                      decoration: const InputDecoration(
-                        prefixIcon: Icon(Icons.person_outline, size: 20),
-                        isDense: true,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    const Text('Senha', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 6),
-                    TextField(
-                      controller: _password,
-                      obscureText: !_showPw,
-                      onSubmitted: (_) => _submit(),
-                      decoration: InputDecoration(
-                        prefixIcon: const Icon(Icons.lock_outline, size: 20),
-                        isDense: true,
-                        suffixIcon: IconButton(
-                          icon: Icon(_showPw ? Icons.visibility_off : Icons.visibility, size: 20),
-                          onPressed: () => setState(() => _showPw = !_showPw),
-                        ),
+                    // AutofillGroup: agrupa os campos como um único "formulário"
+                    // para o Android/Google — sem isto, cada TextField tenta
+                    // disparar sugestões de autofill de forma independente,
+                    // o que nalguns aparelhos entra em loop de popups e
+                    // trava a página (era o bug relatado).
+                    AutofillGroup(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const Text('Nome de usuário', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                          const SizedBox(height: 6),
+                          TextField(
+                            controller: _username,
+                            autocorrect: false,
+                            enableSuggestions: false,
+                            keyboardType: TextInputType.text,
+                            autofillHints: const [AutofillHints.username],
+                            decoration: const InputDecoration(
+                              prefixIcon: Icon(Icons.person_outline, size: 20),
+                              isDense: true,
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          const Text('Senha', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                          const SizedBox(height: 6),
+                          TextField(
+                            controller: _password,
+                            obscureText: !_showPw,
+                            autocorrect: false,
+                            enableSuggestions: false,
+                            autofillHints: const [AutofillHints.password],
+                            onSubmitted: (_) => _submit(),
+                            decoration: InputDecoration(
+                              prefixIcon: const Icon(Icons.lock_outline, size: 20),
+                              isDense: true,
+                              suffixIcon: IconButton(
+                                icon: Icon(_showPw ? Icons.visibility_off : Icons.visibility, size: 20),
+                                onPressed: () => setState(() => _showPw = !_showPw),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 22),

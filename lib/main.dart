@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'core/theme.dart';
 import 'core/router.dart';
 import 'l10n/app_localizations.dart';
@@ -31,7 +30,7 @@ class PixgoApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
-    final locale = ref.watch(localeProvider);
+    final localeState = ref.watch(localeProvider);
 
     return MaterialApp.router(
       title: 'Pixgo',
@@ -40,7 +39,7 @@ class PixgoApp extends ConsumerWidget {
       darkTheme: AppTheme.dark,
       themeMode: ThemeMode.dark,
       routerConfig: router,
-      locale: locale,
+      locale: localeState.locale,
       supportedLocales: const [Locale('pt'), Locale('en'), Locale('es')],
       localizationsDelegates: const [
         AppLocalizations.delegate,

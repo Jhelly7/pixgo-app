@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../core/theme.dart';
-import '../providers/auth_provider.dart';
 import '../providers/locale_provider.dart';
 
 const _languages = [
@@ -20,6 +19,7 @@ class LanguageScreen extends ConsumerStatefulWidget {
 
 class _LanguageScreenState extends ConsumerState<LanguageScreen> {
   String _selected = 'pt';
+  bool _saving = false;
 
   @override
   Widget build(BuildContext context) {
@@ -34,15 +34,7 @@ class _LanguageScreenState extends ConsumerState<LanguageScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    'Pixgo',
-                    style: TextStyle(
-                      fontFamily: AppTheme.fontDisplay,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 40,
-                      color: AppColors.primary,
-                    ),
-                  ),
+                  SvgPicture.asset('assets/icons/logo.svg', height: 64),
                   const SizedBox(height: 22),
                   const Text(
                     'Escolha o seu idioma',
@@ -104,15 +96,23 @@ class _LanguageScreenState extends ConsumerState<LanguageScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: () async {
-                        await ref.read(localeProvider.notifier).setLocale(_selected);
-                        await ref.read(authProvider.notifier).refreshMe();
-                        if (context.mounted) context.go('/');
-                      },
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 4),
-                        child: Text('Continuar'),
-                      ),
+                      onPressed: _saving
+                          ? null
+                          : () async {
+                              setState(() => _saving = true);
+                              // Só grava o idioma — o router reage sozinho
+                              // (via refreshListenable) e navega para o
+                              // sítio certo. Nenhuma chamada a context.go()
+                              // aqui: era essa dupla navegação que causava
+                              // o "aparece e desaparece".
+                              await ref.read(localeProvider.notifier).setLocale(_selected);
+                            },
+                      child: _saving
+                          ? const SizedBox(
+                              height: 18, width: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Text('Continuar'),
                     ),
                   ),
                 ],

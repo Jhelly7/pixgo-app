@@ -1,61 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../core/theme.dart';
-import '../providers/auth_provider.dart';
-import '../providers/locale_provider.dart';
-import 'language_screen.dart';
 
-class SplashScreen extends ConsumerStatefulWidget {
+/// SplashScreen — apenas visual. TODA a navegação (idioma → login/main)
+/// é decidida centralmente pelo redirect do router (ver core/router.dart).
+/// Este ecrã NUNCA chama context.go() — isso foi a causa da corrida que
+/// fazia o ecrã de idioma aparecer e desaparecer.
+class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
-
-  @override
-  ConsumerState<SplashScreen> createState() => _SplashScreenState();
-}
-
-class _SplashScreenState extends ConsumerState<SplashScreen> {
-  bool _checkedLang = false;
-  bool _needsLang = false;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _check());
-  }
-
-  Future<void> _check() async {
-    final has = await ref.read(localeProvider.notifier).hasChosenLanguage();
-    if (!mounted) return;
-    setState(() {
-      _needsLang = !has;
-      _checkedLang = true;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final auth = ref.watch(authProvider);
-
-    if (!_checkedLang) {
-      return const _LoadingBody();
-    }
-    if (_needsLang) {
-      return const LanguageScreen();
-    }
-    if (!auth.hydrated) {
-      return const _LoadingBody();
-    }
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      context.go(auth.isLoggedIn ? '/main' : '/auth/login');
-    });
-    return const _LoadingBody();
-  }
-}
-
-class _LoadingBody extends StatelessWidget {
-  const _LoadingBody();
 
   @override
   Widget build(BuildContext context) {
@@ -65,15 +17,7 @@ class _LoadingBody extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              'Pixgo',
-              style: TextStyle(
-                fontFamily: AppTheme.fontDisplay,
-                fontWeight: FontWeight.w900,
-                fontSize: 32,
-                color: AppColors.primary,
-              ),
-            ),
+            SvgPicture.asset('assets/icons/logo.svg', height: 72),
             const SizedBox(height: 24),
             const CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2.5),
           ],

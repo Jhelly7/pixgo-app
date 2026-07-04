@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../providers/auth_provider.dart';
+import '../providers/locale_provider.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
 import '../screens/main/main_shell.dart';
@@ -18,33 +19,54 @@ import '../screens/main/checkout_screen.dart';
 import '../screens/main/content_detail_screen.dart';
 import '../screens/main/watch_screen.dart';
 import '../screens/splash_screen.dart';
+import '../screens/language_screen.dart';
 
-/// Rotas espelhando 1:1 a estrutura de pastas do Next.js App Router:
-///   /                       → splash / redirect
-///   /auth/login             /auth/register
-///   /main                   /main/catalog   /main/channels   /main/mylist
-///   /main/search            /main/account   /main/downloads
-///   /main/plans             /main/plans/checkout
-///   /main/content/:id       /main/watch/:id
+/// Router — ÚNICA fonte de verdade para navegação.
+///
+/// Antes, o SplashScreen também navegava por si próprio (context.go), ao
+/// mesmo tempo que este redirect fazia o mesmo com base no auth. Os dois
+/// mecanismos competiam entre si, e como o auth "hidrata" quase
+/// instantaneamente quando não há sessão guardada, o redirect do router
+/// disparava ANTES do ecrã de idioma sequer aparecer direito — daí o
+/// "aparece e desaparece". Agora só este redirect decide, com base no
+/// estado combinado de locale + auth, e nenhum widget chama context.go()
+/// para navegação "de arranque".
 final routerProvider = Provider<GoRouter>((ref) {
-  final authNotifier = ref.watch(authProvider.notifier);
-
   return GoRouter(
     initialLocation: '/',
-    refreshListenable: _AuthListenable(ref),
+    refreshListenable: _AppListenable(ref),
     redirect: (context, state) {
       final auth = ref.read(authProvider);
-      final loggingIn = state.matchedLocation.startsWith('/auth');
-      final atSplash = state.matchedLocation == '/';
+      final localeState = ref.read(localeProvider);
+      final loc = state.matchedLocation;
 
-      if (!auth.hydrated) return null;
-      if (atSplash) return auth.isLoggedIn ? '/main' : '/auth/login';
-      if (!auth.isLoggedIn && !loggingIn) return '/auth/login';
-      if (auth.isLoggedIn && loggingIn) return '/main';
+      // 1) Enquanto idioma OU auth ainda não terminaram de carregar do
+      //    disco, fica no splash (nunca decide nada a meio de um carregamento).
+      if (!localeState.loaded || !auth.hydrated) {
+        return loc == '/' ? null : '/';
+      }
+
+      // 2) Idioma ainda não escolhido → força o ecrã de idioma (rota
+      //    própria, não um widget condicional dentro do splash).
+      if (localeState.locale == null) {
+        return loc == '/language' ? null : '/language';
+      }
+
+      // 3) A partir daqui, idioma já está definido — decide por autenticação.
+      final loggingIn = loc.startsWith('/auth');
+      final onLanguageOrSplash = loc == '/language' || loc == '/';
+
+      if (!auth.isLoggedIn) {
+        return loggingIn ? null : '/auth/login';
+      }
+      // Autenticado: nunca deve ficar preso no splash, no ecrã de idioma
+      // ou nas páginas de login/registo.
+      if (loggingIn || onLanguageOrSplash) return '/main';
       return null;
     },
     routes: [
       GoRoute(path: '/', builder: (c, s) => const SplashScreen()),
+      GoRoute(path: '/language', builder: (c, s) => const LanguageScreen()),
       GoRoute(path: '/auth/login', builder: (c, s) => const LoginScreen()),
       GoRoute(path: '/auth/register', builder: (c, s) => const RegisterScreen()),
 
@@ -82,9 +104,13 @@ final routerProvider = Provider<GoRouter>((ref) {
   );
 });
 
-class _AuthListenable extends ChangeNotifier {
-  _AuthListenable(this.ref) {
+/// Notifica o GoRouter sempre que auth OU locale mudam de estado, para
+/// o redirect acima ser reavaliado — é o ÚNICO gatilho de navegação
+/// automática em toda a app.
+class _AppListenable extends ChangeNotifier {
+  _AppListenable(this.ref) {
     ref.listen(authProvider, (_, __) => notifyListeners());
+    ref.listen(localeProvider, (_, __) => notifyListeners());
   }
   final Ref ref;
 }

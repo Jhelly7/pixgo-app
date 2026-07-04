@@ -48,9 +48,22 @@ class ApiClient {
     await _storage.delete(key: _kRefreshKey);
   }
 
-  bool _refreshing = false;
+  Future<String?>? _refreshInFlight;
 
   Future<String?> _doRefresh() async {
+    // Se já existe um refresh em curso, todas as chamadas concorrentes
+    // esperam pelo mesmo resultado em vez de disparar pedidos duplicados.
+    if (_refreshInFlight != null) return _refreshInFlight;
+
+    _refreshInFlight = _performRefresh();
+    try {
+      return await _refreshInFlight;
+    } finally {
+      _refreshInFlight = null;
+    }
+  }
+
+  Future<String?> _performRefresh() async {
     final rt = await refreshToken;
     if (rt == null) return null;
     try {

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme.dart';
 import '../../providers/auth_provider.dart';
@@ -20,13 +22,21 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   bool _showPw = false;
   String? _error;
 
+  @override
+  void dispose() {
+    _name.dispose();
+    _username.dispose();
+    _email.dispose();
+    _password.dispose();
+    super.dispose();
+  }
+
   bool _emailIsValid(String email) {
     if (email.trim().isEmpty) return true;
     return RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email.trim());
   }
 
   Future<void> _submit() async {
-    // Validações client-side — alinhadas com o Zod do backend, iguais ao site.
     if (_name.text.trim().length < 2) {
       setState(() => _error = 'O nome deve ter pelo menos 2 caracteres.');
       return;
@@ -49,7 +59,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
 
     setState(() => _error = null);
-    final locale = ref.read(localeProvider)?.languageCode ?? 'pt';
+    FocusManager.instance.primaryFocus?.unfocus();
+    TextInput.finishAutofillContext();
+
+    final locale = ref.read(localeProvider).locale?.languageCode ?? 'pt';
 
     final body = <String, dynamic>{
       'username': _username.text.trim(),
@@ -61,7 +74,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     try {
       await ref.read(authProvider.notifier).register(body);
-      if (mounted) context.go('/main');
+      // Navegação após registo é tratada pelo redirect central do router.
     } catch (err) {
       final msg = err.toString().toLowerCase();
       setState(() {
@@ -99,14 +112,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Center(
-                      child: Text('Pixgo',
-                          style: TextStyle(
-                              fontFamily: AppTheme.fontDisplay,
-                              fontWeight: FontWeight.w900,
-                              fontSize: 30,
-                              color: AppColors.primary)),
-                    ),
+                    Center(child: SvgPicture.asset('assets/icons/logo.svg', height: 48)),
                     const SizedBox(height: 20),
                     const Text('Criar conta',
                         style: TextStyle(fontFamily: AppTheme.fontDisplay, fontSize: 20, fontWeight: FontWeight.w800)),
@@ -130,60 +136,80 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       ),
                       const SizedBox(height: 14),
                     ],
-                    const Text('Nome completo', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 6),
-                    TextField(
-                      controller: _name,
-                      textCapitalization: TextCapitalization.words,
-                      decoration: const InputDecoration(prefixIcon: Icon(Icons.badge_outlined, size: 20), isDense: true),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text('Pode incluir nome e sobrenome, acentos, etc.',
-                        style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
-                    const SizedBox(height: 13),
-                    const Text('Nome de usuário', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 6),
-                    TextField(
-                      controller: _username,
-                      autocorrect: false,
-                      maxLength: 30,
-                      decoration: const InputDecoration(
-                        prefixIcon: Icon(Icons.person_outline, size: 20),
-                        isDense: true,
-                        counterText: '',
+                    // AutofillGroup: mesma correção do login — evita o loop
+                    // de popups de sugestão do Android que travava a página.
+                    AutofillGroup(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const Text('Nome completo', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                          const SizedBox(height: 6),
+                          TextField(
+                            controller: _name,
+                            textCapitalization: TextCapitalization.words,
+                            autocorrect: false,
+                            enableSuggestions: false,
+                            autofillHints: const [AutofillHints.name],
+                            decoration: const InputDecoration(prefixIcon: Icon(Icons.badge_outlined, size: 20), isDense: true),
+                          ),
+                          const SizedBox(height: 4),
+                          const Text('Pode incluir nome e sobrenome, acentos, etc.',
+                              style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                          const SizedBox(height: 13),
+                          const Text('Nome de usuário', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                          const SizedBox(height: 6),
+                          TextField(
+                            controller: _username,
+                            autocorrect: false,
+                            enableSuggestions: false,
+                            maxLength: 30,
+                            autofillHints: const [AutofillHints.newUsername],
+                            decoration: const InputDecoration(
+                              prefixIcon: Icon(Icons.person_outline, size: 20),
+                              isDense: true,
+                              counterText: '',
+                            ),
+                          ),
+                          const Text('Letras, números e _ (sem espaços)',
+                              style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                          const SizedBox(height: 13),
+                          Row(children: [
+                            const Text('E-mail', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                            const SizedBox(width: 6),
+                            const Text('(opcional)', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                          ]),
+                          const SizedBox(height: 6),
+                          TextField(
+                            controller: _email,
+                            keyboardType: TextInputType.emailAddress,
+                            autocorrect: false,
+                            enableSuggestions: false,
+                            autofillHints: const [AutofillHints.email],
+                            decoration: const InputDecoration(prefixIcon: Icon(Icons.email_outlined, size: 20), isDense: true),
+                          ),
+                          const SizedBox(height: 13),
+                          const Text('Senha', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                          const SizedBox(height: 6),
+                          TextField(
+                            controller: _password,
+                            obscureText: !_showPw,
+                            autocorrect: false,
+                            enableSuggestions: false,
+                            autofillHints: const [AutofillHints.newPassword],
+                            onSubmitted: (_) => _submit(),
+                            decoration: InputDecoration(
+                              prefixIcon: const Icon(Icons.lock_outline, size: 20),
+                              isDense: true,
+                              suffixIcon: IconButton(
+                                icon: Icon(_showPw ? Icons.visibility_off : Icons.visibility, size: 20),
+                                onPressed: () => setState(() => _showPw = !_showPw),
+                              ),
+                            ),
+                          ),
+                          const Text('Mínimo 8 caracteres', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                        ],
                       ),
                     ),
-                    const Text('Letras, números e _ (sem espaços)',
-                        style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
-                    const SizedBox(height: 13),
-                    Row(children: [
-                      const Text('E-mail', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                      const SizedBox(width: 6),
-                      const Text('(opcional)', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
-                    ]),
-                    const SizedBox(height: 6),
-                    TextField(
-                      controller: _email,
-                      keyboardType: TextInputType.emailAddress,
-                      decoration: const InputDecoration(prefixIcon: Icon(Icons.email_outlined, size: 20), isDense: true),
-                    ),
-                    const SizedBox(height: 13),
-                    const Text('Senha', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 6),
-                    TextField(
-                      controller: _password,
-                      obscureText: !_showPw,
-                      onSubmitted: (_) => _submit(),
-                      decoration: InputDecoration(
-                        prefixIcon: const Icon(Icons.lock_outline, size: 20),
-                        isDense: true,
-                        suffixIcon: IconButton(
-                          icon: Icon(_showPw ? Icons.visibility_off : Icons.visibility, size: 20),
-                          onPressed: () => setState(() => _showPw = !_showPw),
-                        ),
-                      ),
-                    ),
-                    const Text('Mínimo 8 caracteres', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
                     const SizedBox(height: 22),
                     ElevatedButton(
                       onPressed: loading ? null : _submit,
