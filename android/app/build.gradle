@@ -17,7 +17,9 @@ def flutterVersionName = localProperties.getProperty("flutter.versionName") ?: "
 
 android {
     namespace = "site.pixgo.app"
-    compileSdk = 34
+    // Usa o compileSdk que a própria versão do Flutter recomenda — evita
+    // desfasamentos com plugins recentes que exigem SDKs mais novos.
+    compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -33,7 +35,7 @@ android {
         // Altera este ID se fores publicar na Play Store com outro pacote.
         applicationId = "site.pixgo.app"
         minSdk = 23
-        targetSdk = 34
+        targetSdk = flutter.targetSdkVersion
         versionCode = flutterVersionCode.toInteger()
         versionName = flutterVersionName
     }
