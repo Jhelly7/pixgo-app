@@ -43,9 +43,7 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          # Sem versão fixa — usa sempre a última stable, evitando
-          # incompatibilidades entre Flutter antigo e plugins recentes
-          # (ex: "unknown property 'flutter'" em package_info_plus/wakelock_plus).
+          flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: 'stable'
           cache: true
 
