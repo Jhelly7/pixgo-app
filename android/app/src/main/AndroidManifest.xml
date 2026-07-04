@@ -14,6 +14,18 @@
         android:networkSecurityConfig="@xml/network_security_config"
         android:usesCleartextTraffic="false">
 
+        <!--
+          Desativa o Impeller (motor gráfico novo do Flutter no Android).
+          Bug conhecido: em várias GPUs Android (Mali e outras comuns em
+          aparelhos de gama média), o Impeller desenha blocos cinzentos
+          sólidos sobre TextFields e outros widgets em vez do conteúdo real
+          — exatamente o sintoma reportado. O Skia (motor antigo) não tem
+          este problema e é o que a app vai usar a partir de agora.
+        -->
+        <meta-data
+            android:name="io.flutter.embedding.android.EnableImpeller"
+            android:value="false"/>
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
