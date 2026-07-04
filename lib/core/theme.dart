@@ -77,7 +77,7 @@ class AppTheme {
           color: AppColors.textTitle,
         ),
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: AppColors.cardBg,
         elevation: 0,
         shape: RoundedRectangleBorder(
