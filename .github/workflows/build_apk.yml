@@ -15,7 +15,6 @@ on:
         options: [ release, debug ]
 
 env:
-  FLUTTER_VERSION: '3.24.0'
   # Aponta para a tua API em produção. Podes sobrepor via repo variable
   # (Settings → Secrets and variables → Actions → Variables → API_BASE_URL).
   API_BASE_URL: ${{ vars.API_BASE_URL || 'https://api.pixgo.frii.site' }}
@@ -41,7 +40,9 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
+          # Sem versão fixa — usa sempre a última stable, evitando
+          # incompatibilidades entre Flutter antigo e plugins recentes
+          # (ex: "unknown property 'flutter'" em package_info_plus/wakelock_plus).
           channel: 'stable'
           cache: true
 
