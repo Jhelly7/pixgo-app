@@ -15,6 +15,9 @@ on:
         options: [ release, debug ]
 
 env:
+  # Fixado na versão validada no último build (evita apanhar versões
+  # diferentes do Flutter a cada run, o que já causou 2 regressões de API).
+  FLUTTER_VERSION: '3.44.4'
   # Aponta para a tua API em produção. Podes sobrepor via repo variable
   # (Settings → Secrets and variables → Actions → Variables → API_BASE_URL).
   API_BASE_URL: ${{ vars.API_BASE_URL || 'https://api.pixgo.frii.site' }}
