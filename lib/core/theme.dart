@@ -61,7 +61,6 @@ class AppTheme {
         surface: AppColors.cardBg,
         error: AppColors.primary,
       ),
-      fontFamily: fontMain,
       textTheme: base.textTheme.apply(
         bodyColor: AppColors.textLight,
         displayColor: AppColors.textTitle,
@@ -78,7 +77,7 @@ class AppTheme {
           color: AppColors.textTitle,
         ),
       ),
-      cardTheme: CardThemeData(
+      cardTheme: CardTheme(
         color: AppColors.cardBg,
         elevation: 0,
         shape: RoundedRectangleBorder(
