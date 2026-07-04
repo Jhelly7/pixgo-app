@@ -25,6 +25,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
 
     steps:
       - name: Checkout
@@ -60,7 +62,7 @@ jobs:
       # Sem eles, o build assina automaticamente com a chave de debug —
       # funciona perfeitamente para testes e instalação manual (side-load).
       - name: Decode keystore (se configurado)
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        if: ${{ env.HAS_KEYSTORE == 'true' }}
         run: |
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/release.keystore
           cat > android/key.properties <<EOF
