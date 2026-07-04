@@ -51,6 +51,9 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
+      - name: Garantir permissão de execução no gradlew
+        run: chmod +x android/gradlew
+
       - name: Analyze (não bloqueia o build — apenas informativo)
         run: flutter analyze || true
 
