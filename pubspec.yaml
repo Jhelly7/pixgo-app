@@ -43,6 +43,12 @@ dependencies:
   fluttertoast: ^8.2.5
   qr_flutter: ^4.1.0
 
+  # i18n nativo do Flutter — necessário para MaterialLocalizations
+  # (sem isto, TextField pode lançar "No MaterialLocalizations found"
+  # e o Flutter desenha um bloco de erro cinzento em vez do widget real)
+  flutter_localizations:
+    sdk: flutter
+
   # Icons (Material — já nativo, mas garantindo o pacote completo)
   cupertino_icons: ^1.0.8
 

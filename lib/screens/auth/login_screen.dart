@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
@@ -30,10 +29,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _submit() async {
     setState(() => _error = null);
     if (_username.text.trim().isEmpty || _password.text.isEmpty) return;
-    // Fecha o teclado/autofill explicitamente antes do pedido de rede —
-    // evita que o popup de sugestões do Android fique "preso" a meio.
     FocusManager.instance.primaryFocus?.unfocus();
-    TextInput.finishAutofillContext();
     try {
       await ref.read(authProvider.notifier).login(_username.text.trim(), _password.text);
       // Navegação após login é tratada pelo redirect central do router.
@@ -96,48 +92,38 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                       const SizedBox(height: 14),
                     ],
-                    // AutofillGroup: agrupa os campos como um único "formulário"
-                    // para o Android/Google — sem isto, cada TextField tenta
-                    // disparar sugestões de autofill de forma independente,
-                    // o que nalguns aparelhos entra em loop de popups e
-                    // trava a página (era o bug relatado).
-                    AutofillGroup(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          const Text('Nome de usuário', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                          const SizedBox(height: 6),
-                          TextField(
-                            controller: _username,
-                            autocorrect: false,
-                            enableSuggestions: false,
-                            keyboardType: TextInputType.text,
-                            autofillHints: const [AutofillHints.username],
-                            decoration: const InputDecoration(
-                              prefixIcon: Icon(Icons.person_outline, size: 20),
-                              isDense: true,
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          const Text('Senha', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                          const SizedBox(height: 6),
-                          TextField(
-                            controller: _password,
-                            obscureText: !_showPw,
-                            autocorrect: false,
-                            enableSuggestions: false,
-                            autofillHints: const [AutofillHints.password],
-                            onSubmitted: (_) => _submit(),
-                            decoration: InputDecoration(
-                              prefixIcon: const Icon(Icons.lock_outline, size: 20),
-                              isDense: true,
-                              suffixIcon: IconButton(
-                                icon: Icon(_showPw ? Icons.visibility_off : Icons.visibility, size: 20),
-                                onPressed: () => setState(() => _showPw = !_showPw),
-                              ),
-                            ),
-                          ),
-                        ],
+                    // SEM AutofillGroup / autofillHints: nalguns aparelhos
+                    // Android o serviço de autofill do Google entra em
+                    // conflito com isto e cobre o ecrã com um bloco cinzento.
+                    // Autofill desligado por completo é a opção mais segura.
+                    const Text('Nome de usuário', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: _username,
+                      autocorrect: false,
+                      enableSuggestions: false,
+                      keyboardType: TextInputType.text,
+                      decoration: const InputDecoration(
+                        prefixIcon: Icon(Icons.person_outline, size: 20),
+                        isDense: true,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    const Text('Senha', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: _password,
+                      obscureText: !_showPw,
+                      autocorrect: false,
+                      enableSuggestions: false,
+                      onSubmitted: (_) => _submit(),
+                      decoration: InputDecoration(
+                        prefixIcon: const Icon(Icons.lock_outline, size: 20),
+                        isDense: true,
+                        suffixIcon: IconButton(
+                          icon: Icon(_showPw ? Icons.visibility_off : Icons.visibility, size: 20),
+                          onPressed: () => setState(() => _showPw = !_showPw),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 22),
