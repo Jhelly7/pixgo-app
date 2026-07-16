@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme.dart';
+import '../../models/models.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_client.dart';
 
@@ -113,7 +114,7 @@ class _PlansScreenState extends ConsumerState<PlansScreen> {
                 child: Padding(
                   padding: const EdgeInsets.all(18),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(p['name'] ?? '', style: const TextStyle(fontFamily: AppTheme.fontDisplay, fontWeight: FontWeight.w800, fontSize: 16)),
+                    Text(cleanStr(p['name']) ?? '', style: const TextStyle(fontFamily: AppTheme.fontDisplay, fontWeight: FontWeight.w800, fontSize: 16)),
                     const SizedBox(height: 6),
                     Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
                       Text('R\$ $brl', style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900)),

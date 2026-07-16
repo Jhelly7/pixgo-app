@@ -2,23 +2,29 @@ import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:video_player/video_player.dart';
+import '../../core/ecdh.dart';
 import '../../core/theme.dart';
+import '../../models/models.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_client.dart';
 import '../../services/decrypt_proxy_server.dart';
 
 /// WatchScreen — equivalente ao watch/[id]/page.tsx + ShakaPlayer.tsx.
 ///
-/// Fluxo:
-///   1. contentApi.getStream(id) → { drmKeyHex, masterUrl, quality, ... }
-///   2. Sobe um DecryptProxyServer local que decripta os segmentos .bin
+/// Fluxo (replicado 1:1 do performECDH() em ShakaPlayer.tsx):
+///   1. Gera um par de chaves ECDH P-256 efémero e envia a chave pública
+///      (clientPubKey, base64) como query param — o backend EXIGE isto.
+///   2. GET /content/:id/stream?clientPubKey=...[&episode=...] →
+///      { drm_key_hex, master_url, nonces_url?, seg_ext?, quality? }
+///   3. Sobe um DecryptProxyServer local que decripta os segmentos .bin
 ///      (ChaCha20, chunk-v2) on-the-fly
-///   3. video_player/Chewie consome o master.m3u8 servido pelo proxy local
-///   4. progressApi.update() periodicamente, igual ao site
+///   4. video_player/Chewie consome o master.m3u8 servido pelo proxy local
+///   5. progressApi.update() periodicamente, igual ao site
 class WatchScreen extends ConsumerStatefulWidget {
   final String id;
   final bool offline;
-  const WatchScreen({super.key, required this.id, this.offline = false});
+  final String? episodeId;
+  const WatchScreen({super.key, required this.id, this.offline = false, this.episodeId});
 
   @override
   ConsumerState<WatchScreen> createState() => _WatchScreenState();
@@ -42,26 +48,33 @@ class _WatchScreenState extends ConsumerState<WatchScreen> {
 
   Future<void> _init() async {
     try {
-      // 1) Pede os detalhes de stream ao backend (equivalente a
-      //    contentApi.getStream + fetchStreamMeta do ShakaPlayer.tsx).
-      final stream = await contentApi.getStream(widget.id);
+      // 1) Handshake ECDH — gera a chave pública P-256 exigida pelo backend.
+      final clientPubKey = Ecdh.generateClientPubKeyBase64();
+
+      final params = <String, dynamic>{'clientPubKey': clientPubKey};
+      if (widget.episodeId != null) params['episode'] = widget.episodeId;
+
+      // 2) Pede os detalhes de stream ao backend.
+      final stream = await contentApi.getStream(widget.id, params);
       final content = await contentApi.get(widget.id).catchError((_) => <String, dynamic>{});
 
-      final keyHex = stream['drmKeyHex'] ?? stream['drm_key_hex'] ?? stream['keyHex'];
-      final masterUrl = stream['masterUrl'] ?? stream['master_url'];
-      _quality = stream['quality']?.toString() ?? '';
-      _title = content['meta']?['title'] ?? content['title'] ?? '';
+      // Nomes de campo exatamente como o backend devolve (snake_case),
+      // com fallback para camelCase por segurança.
+      final keyHex = stream['drm_key_hex'] ?? stream['drmKeyHex'];
+      final masterUrl = stream['master_url'] ?? stream['url'] ?? stream['masterUrl'];
+      _quality = cleanStr(stream['quality']) ?? '';
+      _title = cleanStr(content['meta']?['title']) ?? cleanStr(content['title']) ?? '';
 
       if (keyHex == null || masterUrl == null) {
         setState(() { _error = 'Stream indisponível.'; _loading = false; });
         return;
       }
 
-      // 2) Sobe o proxy local que decripta os segmentos .bin em tempo real.
+      // 3) Sobe o proxy local que decripta os segmentos .bin em tempo real.
       _proxy = DecryptProxyServer(masterUrl: masterUrl, keyHex: keyHex);
       final localUrl = await _proxy!.start();
 
-      // 3) Inicializa o video_player apontado para o proxy local.
+      // 4) Inicializa o video_player apontado para o proxy local.
       _videoController = VideoPlayerController.networkUrl(Uri.parse(localUrl));
       await _videoController!.initialize();
 
@@ -82,6 +95,15 @@ class _WatchScreenState extends ConsumerState<WatchScreen> {
       _videoController!.addListener(_onProgress);
 
       setState(() => _loading = false);
+    } on ApiException catch (e) {
+      setState(() {
+        _error = e.status == 429
+            ? 'Limite gratuito de 1 hora atingido. Assine um plano para continuar.'
+            : (e.status == 401
+                ? 'Faça login para assistir.'
+                : 'Falha ao carregar o stream.');
+        _loading = false;
+      });
     } catch (e) {
       setState(() { _error = 'Falha ao carregar o stream.'; _loading = false; });
     }

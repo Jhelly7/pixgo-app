@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/locale_provider.dart';
 
-/// Equivalente mobile de MobileNav.tsx — barra inferior com 5 itens,
-/// trocando "Buscar" por "Downloads" quando o plano permite (igual ao site).
+/// MainShell — bottom nav (acesso rápido) + Drawer (equivalente completo à
+/// sidebar do AppShell.tsx original: Menu, Conta, Downloads, Upload,
+/// Upgrade, Conta, suporte e sair).
 class MainShell extends ConsumerWidget {
   final Widget child;
   const MainShell({super.key, required this.child});
@@ -26,37 +29,55 @@ class MainShell extends ConsumerWidget {
     return 0;
   }
 
+  bool _isActive(String location, String path) =>
+      path == '/main' ? location == '/main' : location.startsWith(path);
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final location = GoRouterState.of(context).matchedLocation;
     final idx = _currentIndex(location);
     final auth = ref.watch(authProvider);
+    final plan = auth.plan;
+    final user = auth.user;
+    final isPremium = plan != null && plan.id != 'free';
+    final canDownload = plan != null && (plan.id == 'monthly' || plan.id == 'annual');
+    final initials = (user?.name.isNotEmpty == true ? user!.name : (user?.username ?? '?'))
+        .split(' ').take(2).map((w) => w.isNotEmpty ? w[0] : '').join().toUpperCase();
 
     return Scaffold(
       backgroundColor: AppColors.bgDark,
       appBar: AppBar(
-        title: Text(
-          'Pixgo',
-          style: TextStyle(
-            fontFamily: AppTheme.fontDisplay,
-            fontWeight: FontWeight.w900,
-            color: AppColors.primary,
-            fontSize: 20,
-          ),
-        ),
+        title: SvgPicture.asset('assets/icons/logo.svg', height: 26),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.account_circle_outlined),
-            tooltip: 'Conta',
-            onPressed: () => context.go('/main/account'),
-          ),
-          if (!(auth.plan != null && auth.plan!.id != 'free'))
+          _LanguageMenuButton(),
+          if (canDownload)
             IconButton(
-              icon: const Icon(Icons.bolt_rounded, color: AppColors.primary),
-              tooltip: 'Assinar Premium',
-              onPressed: () => context.go('/main/plans'),
+              icon: const Icon(Icons.download_rounded),
+              tooltip: 'Downloads',
+              onPressed: () => context.push('/main/downloads'),
             ),
+          IconButton(
+            icon: CircleAvatar(
+              radius: 14,
+              backgroundColor: AppColors.primary,
+              child: Text(initials, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white)),
+            ),
+            tooltip: user?.name ?? '',
+            onPressed: () => context.push('/main/account'),
+          ),
+          const SizedBox(width: 6),
         ],
+      ),
+      drawer: _AppDrawer(
+        location: location,
+        isActive: _isActive,
+        isPremium: isPremium,
+        canDownload: canDownload,
+        userName: user?.name,
+        username: user?.username,
+        userEmail: user?.email,
+        planId: plan?.id ?? 'free',
+        initials: initials,
       ),
       body: SafeArea(
         top: false,
@@ -75,6 +96,266 @@ class MainShell extends ConsumerWidget {
                 ))
             .toList(),
       ),
+    );
+  }
+}
+
+/// Botão de idioma na AppBar — equivalente ao seletor PT/EN/ES do header original.
+class _LanguageMenuButton extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final current = ref.watch(localeProvider).locale?.languageCode ?? 'pt';
+    return PopupMenuButton<String>(
+      icon: Row(mainAxisSize: MainAxisSize.min, children: [
+        const Icon(Icons.translate, size: 18),
+        const SizedBox(width: 3),
+        Text(current.toUpperCase(), style: const TextStyle(fontSize: 11, fontFamily: 'monospace', fontWeight: FontWeight.w700)),
+      ]),
+      onSelected: (code) => ref.read(localeProvider.notifier).setLocale(code),
+      itemBuilder: (c) => const [
+        PopupMenuItem(value: 'pt', child: Text('🇧🇷  Português')),
+        PopupMenuItem(value: 'en', child: Text('🇺🇸  English')),
+        PopupMenuItem(value: 'es', child: Text('🇪🇸  Español')),
+      ],
+    );
+  }
+}
+
+/// Drawer — equivalente completo à sidebar do AppShell.tsx original.
+class _AppDrawer extends ConsumerWidget {
+  final String location;
+  final bool Function(String, String) isActive;
+  final bool isPremium;
+  final bool canDownload;
+  final String? userName;
+  final String? username;
+  final String? userEmail;
+  final String planId;
+  final String initials;
+
+  const _AppDrawer({
+    required this.location,
+    required this.isActive,
+    required this.isPremium,
+    required this.canDownload,
+    required this.userName,
+    required this.username,
+    required this.userEmail,
+    required this.planId,
+    required this.initials,
+  });
+
+  static const _menu = [
+    {'path': '/main', 'icon': Icons.home_rounded, 'label': 'Início'},
+    {'path': '/main/catalog', 'icon': Icons.movie_rounded, 'label': 'Catálogo'},
+    {'path': '/main/channels', 'icon': Icons.live_tv_rounded, 'label': 'TV ao Vivo'},
+    {'path': '/main/mylist', 'icon': Icons.bookmark_rounded, 'label': 'Minha Lista'},
+    {'path': '/main/search', 'icon': Icons.search_rounded, 'label': 'Buscar'},
+  ];
+
+  void _showUploadBlocked(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (c) => AlertDialog(
+        backgroundColor: AppColors.cardBg,
+        title: const Text('Upload temporariamente bloqueado'),
+        content: const Text(
+          'Os uploads estão restritos na sua região devido a requisitos de conformidade legal e verificação de direitos autorais.\n\n'
+          'Detetámos possíveis violações de direitos autorais e estamos a trabalhar ativamente para remover e bloquear todo o conteúdo protegido.\n\n'
+          'Em breve os uploads estarão disponíveis novamente para criadores verificados.',
+          style: TextStyle(fontSize: 13, color: AppColors.textMuted, height: 1.5),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c), child: const Text('Entendido')),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Drawer(
+      backgroundColor: AppColors.bgDarker,
+      child: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SvgPicture.asset('assets/icons/logo.svg', height: 30),
+                  const SizedBox(height: 16),
+                  Row(children: [
+                    CircleAvatar(
+                      radius: 20,
+                      backgroundColor: AppColors.primary,
+                      child: Text(initials, style: const TextStyle(fontWeight: FontWeight.w800, color: Colors.white)),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(userName ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                          Text('@${username ?? ''}', style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                          Container(
+                            margin: const EdgeInsets.only(top: 3),
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: isPremium ? AppColors.primary.withOpacity(0.15) : Colors.white10,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(planId, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ]),
+                ],
+              ),
+            ),
+            const Divider(height: 1, color: AppColors.border),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                children: [
+                  _sectionLabel('Menu'),
+                  ..._menu.map((item) => _navTile(
+                        context,
+                        icon: item['icon'] as IconData,
+                        label: item['label'] as String,
+                        active: isActive(location, item['path'] as String),
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.go(item['path'] as String);
+                        },
+                      )),
+                  const SizedBox(height: 10),
+                  _sectionLabel('Conta'),
+                  _navTile(
+                    context,
+                    icon: Icons.download_rounded,
+                    label: 'Downloads',
+                    active: isActive(location, '/main/downloads'),
+                    trailing: !canDownload
+                        ? Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                            decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(4)),
+                            child: const Text('PRO', style: TextStyle(fontSize: 9, color: AppColors.textMuted)),
+                          )
+                        : null,
+                    onTap: () {
+                      Navigator.pop(context);
+                      if (canDownload) {
+                        context.push('/main/downloads');
+                      } else {
+                        context.go('/main/plans');
+                      }
+                    },
+                  ),
+                  _navTile(
+                    context,
+                    icon: Icons.cloud_upload_rounded,
+                    label: 'Enviar conteúdo',
+                    active: false,
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showUploadBlocked(context);
+                    },
+                  ),
+                  _navTile(
+                    context,
+                    icon: Icons.bolt_rounded,
+                    label: 'Assinar Premium',
+                    active: isActive(location, '/main/plans'),
+                    trailing: !isPremium
+                        ? Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                            decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(4)),
+                            child: const Text('Free', style: TextStyle(fontSize: 9, color: Colors.white)),
+                          )
+                        : null,
+                    onTap: () {
+                      Navigator.pop(context);
+                      context.go('/main/plans');
+                    },
+                  ),
+                  _navTile(
+                    context,
+                    icon: Icons.settings_rounded,
+                    label: 'Conta',
+                    active: isActive(location, '/main/account'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      context.push('/main/account');
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1, color: AppColors.border),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 10, 14, 6),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.06),
+                  border: Border.all(color: AppColors.primary.withOpacity(0.15)),
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                child: Row(children: [
+                  const Icon(Icons.email_outlined, size: 14, color: AppColors.primary),
+                  const SizedBox(width: 8),
+                  Column(crossAxisAlignment: CrossAxisAlignment.start, children: const [
+                    Text('Denunciar direitos autorais', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: AppColors.textMuted)),
+                    Text('pixgoplatform@outlook.com', style: TextStyle(fontFamily: 'monospace', fontSize: 10.5, color: AppColors.primary, fontWeight: FontWeight.w700)),
+                  ]),
+                ]),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(6, 0, 6, 8),
+              child: ListTile(
+                leading: const Icon(Icons.logout_rounded, size: 19, color: AppColors.textMuted),
+                title: const Text('Sair', style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
+                dense: true,
+                onTap: () async {
+                  Navigator.pop(context);
+                  await ref.read(authProvider.notifier).logout();
+                  if (context.mounted) context.go('/auth/login');
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _sectionLabel(String text) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+        child: Text(text.toUpperCase(),
+            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1, color: AppColors.textMuted)),
+      );
+
+  Widget _navTile(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required bool active,
+    required VoidCallback onTap,
+    Widget? trailing,
+  }) {
+    return ListTile(
+      dense: true,
+      leading: Icon(icon, size: 19, color: active ? AppColors.primary : AppColors.textMuted),
+      title: Text(label, style: TextStyle(fontSize: 13, color: active ? AppColors.textTitle : AppColors.textMuted, fontWeight: active ? FontWeight.w700 : FontWeight.w400)),
+      trailing: trailing,
+      selected: active,
+      selectedTileColor: AppColors.primary.withOpacity(0.06),
+      onTap: onTap,
     );
   }
 }

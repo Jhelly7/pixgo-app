@@ -98,6 +98,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (c, s) => WatchScreen(
           id: s.pathParameters['id']!,
           offline: s.uri.queryParameters['offline'] == '1',
+          episodeId: s.uri.queryParameters['ep'],
         ),
       ),
     ],

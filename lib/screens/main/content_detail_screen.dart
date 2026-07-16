@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme.dart';
+import '../../models/models.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_client.dart';
 
@@ -63,12 +64,12 @@ class _ContentDetailScreenState extends ConsumerState<ContentDetailScreen> {
 
     final c = _content!;
     final meta = c['meta'] as Map<String, dynamic>? ?? {};
-    final title = meta['title'] ?? c['title'] ?? '';
-    final poster = meta['poster'] ?? c['poster'];
-    final desc = meta['description'] ?? c['description'] ?? '';
+    final title = cleanStr(meta['title']) ?? cleanStr(c['title']) ?? '';
+    final poster = cleanStr(meta['poster']) ?? cleanStr(c['poster']);
+    final desc = cleanStr(meta['description']) ?? cleanStr(c['description']) ?? '';
     final genres = ((meta['genres'] ?? c['genres']) as List?)?.cast<String>() ?? [];
-    final year = c['year'];
-    final type = c['type'] ?? '';
+    final year = cleanStr(c['year']);
+    final type = cleanStr(c['type']) ?? '';
     final seasons = (c['seasons'] as List?) ?? [];
     final isEpisodic = seasons.isNotEmpty;
 

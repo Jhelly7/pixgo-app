@@ -1,3 +1,15 @@
+/// Sanitiza valores de string vindos da API: trata null, string vazia, e as
+/// strings literais "undefined"/"null" (que por vezes vêm assim mesmo do
+/// backend) como "sem valor" — evita que "undefined" apareça escrito nos ecrãs.
+String? cleanStr(dynamic v) {
+  if (v == null) return null;
+  final s = v.toString().trim();
+  if (s.isEmpty) return null;
+  final lower = s.toLowerCase();
+  if (lower == 'undefined' || lower == 'null') return null;
+  return s;
+}
+
 class AppUser {
   final String id;
   final String username;
@@ -16,12 +28,12 @@ class AppUser {
   });
 
   factory AppUser.fromJson(Map<String, dynamic> j) => AppUser(
-        id: j['id']?.toString() ?? '',
-        username: j['username'] ?? '',
-        name: j['name'] ?? '',
-        email: j['email'],
-        role: j['role'] ?? 'user',
-        planId: j['plan_id'] ?? 'free',
+        id: cleanStr(j['id']) ?? '',
+        username: cleanStr(j['username']) ?? '',
+        name: cleanStr(j['name']) ?? '',
+        email: cleanStr(j['email']),
+        role: cleanStr(j['role']) ?? 'user',
+        planId: cleanStr(j['plan_id']) ?? 'free',
       );
 }
 
@@ -45,13 +57,13 @@ class AppPlan {
   });
 
   factory AppPlan.fromJson(Map<String, dynamic> j) => AppPlan(
-        id: j['id']?.toString() ?? 'free',
-        name: j['name'] ?? 'Free',
+        id: cleanStr(j['id']) ?? 'free',
+        name: cleanStr(j['name']) ?? 'Free',
         priceBrl: (j['price_brl'] as num?)?.toDouble(),
         priceUsdt: (j['price_usdt'] as num?)?.toDouble(),
         isActive: j['is_active'] == true,
-        expiresAt: j['expires_at'],
-        durationDays: j['duration_days'],
+        expiresAt: cleanStr(j['expires_at']),
+        durationDays: j['duration_days'] is int ? j['duration_days'] : int.tryParse('${j['duration_days'] ?? ''}'),
       );
 
   static AppPlan free() => AppPlan(id: 'free', name: 'Free');
@@ -62,7 +74,7 @@ class Profile {
   final String? name;
   Profile({required this.id, this.name});
   factory Profile.fromJson(Map<String, dynamic> j) =>
-      Profile(id: j['id']?.toString() ?? '', name: j['name']);
+      Profile(id: cleanStr(j['id']) ?? '', name: cleanStr(j['name']));
 }
 
 class ContentItem {
@@ -91,14 +103,18 @@ class ContentItem {
   factory ContentItem.fromJson(Map<String, dynamic> j) {
     final meta = j['meta'] as Map<String, dynamic>?;
     return ContentItem(
-      id: j['id']?.toString() ?? '',
-      title: meta?['title'] ?? j['title'] ?? '—',
-      poster: meta?['poster'] ?? j['poster'],
-      description: meta?['description'] ?? j['description'],
-      year: j['year'] is int ? j['year'] : int.tryParse('${j['year'] ?? ''}'),
-      type: j['type'],
-      rating: (meta?['rating'] ?? j['rating'] as num?)?.toDouble(),
-      genres: ((meta?['genres'] ?? j['genres']) as List?)?.map((e) => e.toString()).toList() ?? [],
+      id: cleanStr(j['id']) ?? '',
+      title: cleanStr(meta?['title']) ?? cleanStr(j['title']) ?? '—',
+      poster: cleanStr(meta?['poster']) ?? cleanStr(j['poster']),
+      description: cleanStr(meta?['description']) ?? cleanStr(j['description']),
+      year: j['year'] is int ? j['year'] as int : int.tryParse(cleanStr(j['year']) ?? ''),
+      type: cleanStr(j['type']),
+      rating: (meta?['rating'] as num?)?.toDouble() ?? (j['rating'] as num?)?.toDouble(),
+      genres: ((meta?['genres'] ?? j['genres']) as List?)
+              ?.map((e) => cleanStr(e))
+              .whereType<String>()
+              .toList() ??
+          [],
       progress: (j['progress'] as num?)?.toDouble(),
     );
   }
@@ -128,13 +144,13 @@ class ChannelItem {
   });
 
   factory ChannelItem.fromJson(Map<String, dynamic> j) => ChannelItem(
-        id: j['id']?.toString() ?? '',
-        name: j['name'] ?? '',
-        logo: j['logo'],
-        group: j['group'],
-        country: j['country'],
-        language: j['language'],
-        url: j['url'],
+        id: cleanStr(j['id']) ?? '',
+        name: cleanStr(j['name']) ?? '',
+        logo: cleanStr(j['logo']),
+        group: cleanStr(j['group']),
+        country: cleanStr(j['country']),
+        language: cleanStr(j['language']),
+        url: cleanStr(j['url']),
         hasAccess: j['has_access'] == true,
         locked: j['locked'] == true,
       );

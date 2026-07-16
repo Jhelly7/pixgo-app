@@ -55,6 +55,7 @@ dependencies:
   # Utils
   intl: ^0.20.2
   crypto: ^3.0.3
+  pointycastle: ^3.9.1
   collection: ^1.18.0
 
 dev_dependencies:

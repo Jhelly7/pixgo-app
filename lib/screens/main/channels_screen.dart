@@ -16,6 +16,7 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
   List<ChannelItem> _channels = [];
   String _filter = 'All';
   final _categories = ['All', 'PT', 'ES', 'EN', 'News', 'Sports', 'Anime', 'Musica', 'Infantil', 'Filmes'];
+  bool _disposed = false;
 
   @override
   void initState() {
@@ -23,13 +24,32 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
     _load();
   }
 
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
+  // O backend pode responder {channels: [], loading: true, retry_ms} enquanto
+  // a playlist de canais ainda está a ser preparada/cacheada no servidor —
+  // sem tentar de novo depois do retry_ms, os canais nunca apareciam no
+  // primeiro carregamento (era exatamente o bug reportado).
   Future<void> _load() async {
     try {
       final res = await channelsApi.list();
+      if (_disposed) return;
+
+      if (res['loading'] == true) {
+        final retryMs = (res['retry_ms'] as num?)?.toInt() ?? 2000;
+        await Future.delayed(Duration(milliseconds: retryMs));
+        if (!_disposed) _load();
+        return;
+      }
+
       final list = (res['channels'] as List? ?? []).map((e) => ChannelItem.fromJson(e)).toList();
       setState(() { _channels = list; _loading = false; });
     } catch (_) {
-      setState(() => _loading = false);
+      if (!_disposed) setState(() => _loading = false);
     }
   }
 
