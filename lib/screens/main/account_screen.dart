@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme.dart';
+import '../../l10n/app_localizations.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_client.dart';
 
@@ -36,9 +37,9 @@ class _AccountScreenState extends ConsumerState<AccountScreen> with SingleTicker
       if (_email.text.trim().isNotEmpty) body['email'] = _email.text.trim();
       await authApi.update(body);
       await ref.read(authProvider.notifier).refreshMe();
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Perfil atualizado')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.t('account.saved'))));
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Erro ao salvar')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.t('common.error'))));
     } finally {
       setState(() => _saving = false);
     }
@@ -70,7 +71,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> with SingleTicker
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Configurações da Conta', style: TextStyle(fontFamily: AppTheme.fontDisplay, fontSize: 18, fontWeight: FontWeight.w800)),
+        Text(context.t('account.title'), style: const TextStyle(fontFamily: AppTheme.fontDisplay, fontSize: 18, fontWeight: FontWeight.w800)),
         const SizedBox(height: 10),
         TabBar(
           controller: _tab,
@@ -78,7 +79,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> with SingleTicker
           labelColor: AppColors.primary,
           unselectedLabelColor: AppColors.textMuted,
           indicatorColor: AppColors.primary,
-          tabs: const [Tab(text: 'Perfil'), Tab(text: 'Segurança'), Tab(text: 'Assinatura')],
+          tabs: [Tab(text: context.t('account.profile')), Tab(text: context.t('account.security')), Tab(text: context.t('account.subscription'))],
         ),
         Expanded(
           child: TabBarView(
@@ -114,17 +115,17 @@ class _AccountScreenState extends ConsumerState<AccountScreen> with SingleTicker
                     ]),
                   ),
                   const SizedBox(height: 18),
-                  const Text('Nome completo', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                  Text(context.t('auth.fullName'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 6),
                   TextField(controller: _name),
                   const SizedBox(height: 12),
-                  const Text('E-mail (opcional)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                  Text('${context.t('auth.email')} (${context.t('auth.emailOptional')})', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 6),
                   TextField(controller: _email, keyboardType: TextInputType.emailAddress),
                   const SizedBox(height: 18),
                   ElevatedButton(
                     onPressed: _saving ? null : _saveProfile,
-                    child: _saving ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Salvar alterações'),
+                    child: _saving ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : Text(context.t('account.saveName')),
                   ),
                 ]),
               ),
@@ -132,18 +133,18 @@ class _AccountScreenState extends ConsumerState<AccountScreen> with SingleTicker
               SingleChildScrollView(
                 padding: const EdgeInsets.only(top: 16),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Text('Senha atual', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                  Text(context.t('account.currentPassword'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 6),
                   TextField(controller: _curPw, obscureText: true),
                   const SizedBox(height: 12),
-                  const Text('Nova senha', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                  Text(context.t('account.newPassword'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 6),
                   TextField(controller: _newPw, obscureText: true),
-                  const Text('Mínimo 8 caracteres', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                  Text(context.t('auth.minPassword'), style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
                   const SizedBox(height: 18),
                   ElevatedButton(
                     onPressed: (_saving || _curPw.text.isEmpty || _newPw.text.length < 8) ? null : _changePassword,
-                    child: _saving ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Alterar senha'),
+                    child: _saving ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : Text(context.t('account.changePassword')),
                   ),
                 ]),
               ),
@@ -162,12 +163,12 @@ class _AccountScreenState extends ConsumerState<AccountScreen> with SingleTicker
                       Expanded(
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Text('${plan?.id ?? 'free'} Plan', style: const TextStyle(fontFamily: AppTheme.fontDisplay, fontWeight: FontWeight.w800)),
-                          Text(isPremium ? 'Streaming ilimitado · Sem anúncios · Downloads' : '1 hora gratuita de streaming por IP',
+                          Text(isPremium ? context.t('account.premiumDesc') : context.t('account.freeDesc'),
                               style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
                         ]),
                       ),
                       if (!isPremium)
-                        ElevatedButton(onPressed: () => context.go('/main/plans'), child: const Text('Assinar')),
+                        ElevatedButton(onPressed: () => context.go('/main/plans'), child: Text(context.t('account.upgrade'))),
                     ]),
                   ),
                 ]),
@@ -181,7 +182,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> with SingleTicker
             if (context.mounted) context.go('/auth/login');
           },
           icon: const Icon(Icons.logout, color: AppColors.primary, size: 18),
-          label: const Text('Sair', style: TextStyle(color: AppColors.primary)),
+          label: Text(context.t('nav.signOut'), style: const TextStyle(color: AppColors.primary)),
         ),
       ],
     );

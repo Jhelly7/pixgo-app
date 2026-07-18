@@ -101,10 +101,18 @@ class ContentItem {
   });
 
   factory ContentItem.fromJson(Map<String, dynamic> j) {
-    final meta = j['meta'] as Map<String, dynamic>?;
+    final metaRaw = j['meta'];
+    final meta = metaRaw is Map<String, dynamic> ? metaRaw : null;
+    // O backend nem sempre usa "title" — em vários endpoints (ex: canais)
+    // o campo chama-se "name". Tenta ambos, aninhado e direto.
+    final title = cleanStr(meta?['title']) ??
+        cleanStr(j['title']) ??
+        cleanStr(meta?['name']) ??
+        cleanStr(j['name']) ??
+        '—';
     return ContentItem(
       id: cleanStr(j['id']) ?? '',
-      title: cleanStr(meta?['title']) ?? cleanStr(j['title']) ?? '—',
+      title: title,
       poster: cleanStr(meta?['poster']) ?? cleanStr(j['poster']),
       description: cleanStr(meta?['description']) ?? cleanStr(j['description']),
       year: j['year'] is int ? j['year'] as int : int.tryParse(cleanStr(j['year']) ?? ''),

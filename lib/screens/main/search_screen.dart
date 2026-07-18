@@ -1,11 +1,17 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/models.dart';
 import '../../services/api_client.dart';
 import '../../widgets/content_card.dart';
 
+/// SearchScreen — réplica exata do contrato usado em app/main/search/page.tsx:
+/// searchApi.search(query, {limit:24}) → res.results / res.pagination?.total.
+/// Sem chaves alternativas "por garantia" — é o mesmo contrato já testado
+/// no site, ponto final.
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
   @override
@@ -24,8 +30,18 @@ class _SearchScreenState extends State<SearchScreen> {
   void initState() {
     super.initState();
     searchApi.popular().then((p) {
-      setState(() => _popular = p.map((e) => e['term'].toString()).toList());
-    }).catchError((_) {});
+      if (!mounted) return;
+      setState(() => _popular = p.map((e) => cleanStr(e['term'])).whereType<String>().toList());
+    }).catchError((e) {
+      if (kDebugMode) debugPrint('searchApi.popular falhou: $e');
+    });
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _controller.dispose();
+    super.dispose();
   }
 
   void _onChanged(String q) {
@@ -34,20 +50,25 @@ class _SearchScreenState extends State<SearchScreen> {
       setState(() { _results = []; _total = 0; });
       return;
     }
-    _debounce = Timer(const Duration(milliseconds: 340), () async {
-      setState(() => _loading = true);
-      try {
-        final res = await searchApi.search(q, {'limit': 24});
-        final items = (res['results'] as List? ?? []).map((e) => ContentItem.fromJson(e)).toList();
-        setState(() {
-          _results = items;
-          _total = res['pagination']?['total'] ?? items.length;
-          _loading = false;
-        });
-      } catch (_) {
-        setState(() => _loading = false);
-      }
-    });
+    _debounce = Timer(const Duration(milliseconds: 340), () => _runSearch(q));
+  }
+
+  Future<void> _runSearch(String q) async {
+    setState(() => _loading = true);
+    try {
+      final res = await searchApi.search(q, {'limit': 24});
+      final items = (res['results'] as List? ?? []).map((e) => ContentItem.fromJson(e)).toList();
+      if (!mounted) return;
+      setState(() {
+        _results = items;
+        _total = res['pagination']?['total'] ?? 0;
+        _loading = false;
+      });
+    } catch (e) {
+      if (kDebugMode) debugPrint('searchApi.search falhou: $e');
+      if (!mounted) return;
+      setState(() => _loading = false);
+    }
   }
 
   @override
@@ -55,13 +76,13 @@ class _SearchScreenState extends State<SearchScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Buscar', style: TextStyle(fontFamily: AppTheme.fontDisplay, fontSize: 20, fontWeight: FontWeight.w800)),
+        Text(context.t('search.title'), style: TextStyle(fontFamily: AppTheme.fontDisplay, fontSize: 20, fontWeight: FontWeight.w800)),
         const SizedBox(height: 12),
         TextField(
           controller: _controller,
           onChanged: _onChanged,
           decoration: InputDecoration(
-            hintText: 'Buscar filmes, séries, anime...',
+            hintText: context.t('search.placeholder'),
             prefixIcon: const Icon(Icons.search, size: 20),
             suffixIcon: _loading
                 ? const Padding(
@@ -72,10 +93,10 @@ class _SearchScreenState extends State<SearchScreen> {
         ),
         const SizedBox(height: 16),
         if (_controller.text.trim().isEmpty && _popular.isNotEmpty) ...[
-          const Row(children: [
-            Icon(Icons.trending_up, size: 16, color: AppColors.primary),
-            SizedBox(width: 6),
-            Text('Em alta', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+          Row(children: [
+            const Icon(Icons.trending_up, size: 16, color: AppColors.primary),
+            const SizedBox(width: 6),
+            Text(context.t('search.popularSearches'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
           ]),
           const SizedBox(height: 10),
           Wrap(
@@ -90,11 +111,11 @@ class _SearchScreenState extends State<SearchScreen> {
         if (_controller.text.trim().isNotEmpty)
           Expanded(
             child: _results.isEmpty && !_loading
-                ? const Center(child: Text('Nenhum resultado', style: TextStyle(color: AppColors.textMuted)))
+                ? Center(child: Text(context.t('common.noResults'), style: const TextStyle(color: AppColors.textMuted)))
                 : Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('$_total resultados', style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                      Text('$_total ${context.t('search.results')} "${_controller.text}"', style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
                       const SizedBox(height: 8),
                       Expanded(
                         child: GridView.builder(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/models.dart';
 import '../../services/api_client.dart';
 import '../../widgets/content_card.dart';
@@ -51,8 +52,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Catálogo', style: TextStyle(fontFamily: AppTheme.fontDisplay, fontSize: 20, fontWeight: FontWeight.w800)),
-        Text('$_total títulos', style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+        Text(context.t('catalog.title'), style: TextStyle(fontFamily: AppTheme.fontDisplay, fontSize: 20, fontWeight: FontWeight.w800)),
+        Text('$_total ${context.t('catalog.titles')}', style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
         const SizedBox(height: 12),
         SizedBox(
           height: 36,
@@ -64,7 +65,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
               final tp = _types[i];
               final active = _type == tp;
               return ChoiceChip(
-                label: Text(tp == 'All' ? 'Todos' : tp),
+                label: Text(context.t('catalog.${tp == 'All' ? 'allTypes' : tp}')),
                 selected: active,
                 onSelected: (_) {
                   setState(() { _type = tp; _page = 1; });
@@ -82,7 +83,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
           child: _loading
               ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
               : _items.isEmpty
-                  ? const Center(child: Text('Nenhum conteúdo encontrado', style: TextStyle(color: AppColors.textMuted)))
+                  ? Center(child: Text(context.t('catalog.noContent'), style: const TextStyle(color: AppColors.textMuted)))
                   : GridView.builder(
                       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 3,

@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/models.dart';
 import '../../services/api_client.dart';
 import '../../widgets/content_card.dart';
@@ -62,9 +63,9 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           const Icon(Icons.tv_off_rounded, size: 40, color: AppColors.textMuted),
           const SizedBox(height: 12),
-          const Text('Nenhum conteúdo disponível no momento.'),
+          Text(context.t('home.noContent')),
           const SizedBox(height: 14),
-          ElevatedButton(onPressed: _load, child: const Text('Tentar novamente')),
+          ElevatedButton(onPressed: _load, child: Text(context.t('common.retry'))),
         ]),
       );
     }
@@ -79,10 +80,10 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           if (hero != null) _buildHero(hero),
           const SizedBox(height: 18),
-          _buildRow('Em alta agora', _popular),
-          _buildRow('Filmes recentes', _movies),
-          _buildRow('Séries', _series),
-          _buildRow('Anime', _anime),
+          _buildRow(context.t('home.popularNow'), _popular),
+          _buildRow(context.t('home.latestMovies'), _movies),
+          _buildRow(context.t('home.series'), _series),
+          _buildRow(context.t('home.anime'), _anime),
           const SizedBox(height: 24),
         ],
       ),
@@ -137,13 +138,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   ElevatedButton.icon(
                     onPressed: () => context.push('/main/watch/${hero.id}'),
                     icon: const Icon(Icons.play_arrow_rounded, size: 20),
-                    label: const Text('Assistir'),
+                    label: Text(context.t('home.playNow')),
                   ),
                   const SizedBox(width: 10),
                   OutlinedButton.icon(
                     onPressed: () => context.go('/main/content/${hero.id}'),
                     icon: const Icon(Icons.info_outline_rounded, size: 18),
-                    label: const Text('Detalhes'),
+                    label: Text(context.t('home.moreInfo')),
                   ),
                 ]),
               ],

@@ -64,7 +64,7 @@ class _ContentDetailScreenState extends ConsumerState<ContentDetailScreen> {
 
     final c = _content!;
     final meta = c['meta'] as Map<String, dynamic>? ?? {};
-    final title = cleanStr(meta['title']) ?? cleanStr(c['title']) ?? '';
+    final title = cleanStr(meta['title']) ?? cleanStr(c['title']) ?? cleanStr(meta['name']) ?? cleanStr(c['name']) ?? '';
     final poster = cleanStr(meta['poster']) ?? cleanStr(c['poster']);
     final desc = cleanStr(meta['description']) ?? cleanStr(c['description']) ?? '';
     final genres = ((meta['genres'] ?? c['genres']) as List?)?.cast<String>() ?? [];

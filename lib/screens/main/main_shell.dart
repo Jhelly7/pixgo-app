@@ -3,22 +3,23 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme.dart';
+import '../../l10n/app_localizations.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/locale_provider.dart';
 
-/// MainShell — bottom nav (acesso rápido) + Drawer (equivalente completo à
-/// sidebar do AppShell.tsx original: Menu, Conta, Downloads, Upload,
-/// Upgrade, Conta, suporte e sair).
+/// MainShell — bottom nav + Drawer, ligados às MESMAS chaves de tradução
+/// que o site usa (assets/i18n/{pt,en,es}.json, chaves nav.*) — trocar de
+/// idioma aqui tem o mesmo efeito real que no site.
 class MainShell extends ConsumerWidget {
   final Widget child;
   const MainShell({super.key, required this.child});
 
   static const _tabs = [
-    {'path': '/main', 'icon': Icons.home_rounded, 'label': 'Início'},
-    {'path': '/main/catalog', 'icon': Icons.movie_rounded, 'label': 'Catálogo'},
-    {'path': '/main/channels', 'icon': Icons.live_tv_rounded, 'label': 'TV'},
-    {'path': '/main/mylist', 'icon': Icons.bookmark_rounded, 'label': 'Minha Lista'},
-    {'path': '/main/search', 'icon': Icons.search_rounded, 'label': 'Buscar'},
+    {'path': '/main', 'icon': Icons.home_rounded, 'key': 'nav.home'},
+    {'path': '/main/catalog', 'icon': Icons.movie_rounded, 'key': 'nav.catalog'},
+    {'path': '/main/channels', 'icon': Icons.live_tv_rounded, 'key': 'nav.liveTV'},
+    {'path': '/main/mylist', 'icon': Icons.bookmark_rounded, 'key': 'nav.myList'},
+    {'path': '/main/search', 'icon': Icons.search_rounded, 'key': 'nav.search'},
   ];
 
   int _currentIndex(String location) {
@@ -53,7 +54,7 @@ class MainShell extends ConsumerWidget {
           if (canDownload)
             IconButton(
               icon: const Icon(Icons.download_rounded),
-              tooltip: 'Downloads',
+              tooltip: context.t('nav.downloads'),
               onPressed: () => context.push('/main/downloads'),
             ),
           IconButton(
@@ -92,7 +93,7 @@ class MainShell extends ConsumerWidget {
         items: _tabs
             .map((t) => BottomNavigationBarItem(
                   icon: Icon(t['icon'] as IconData),
-                  label: t['label'] as String,
+                  label: context.t(t['key'] as String),
                 ))
             .toList(),
       ),
@@ -146,11 +147,11 @@ class _AppDrawer extends ConsumerWidget {
   });
 
   static const _menu = [
-    {'path': '/main', 'icon': Icons.home_rounded, 'label': 'Início'},
-    {'path': '/main/catalog', 'icon': Icons.movie_rounded, 'label': 'Catálogo'},
-    {'path': '/main/channels', 'icon': Icons.live_tv_rounded, 'label': 'TV ao Vivo'},
-    {'path': '/main/mylist', 'icon': Icons.bookmark_rounded, 'label': 'Minha Lista'},
-    {'path': '/main/search', 'icon': Icons.search_rounded, 'label': 'Buscar'},
+    {'path': '/main', 'icon': Icons.home_rounded, 'key': 'nav.home'},
+    {'path': '/main/catalog', 'icon': Icons.movie_rounded, 'key': 'nav.catalog'},
+    {'path': '/main/channels', 'icon': Icons.live_tv_rounded, 'key': 'nav.liveTV'},
+    {'path': '/main/mylist', 'icon': Icons.bookmark_rounded, 'key': 'nav.myList'},
+    {'path': '/main/search', 'icon': Icons.search_rounded, 'key': 'nav.search'},
   ];
 
   void _showUploadBlocked(BuildContext context) {
@@ -158,15 +159,13 @@ class _AppDrawer extends ConsumerWidget {
       context: context,
       builder: (c) => AlertDialog(
         backgroundColor: AppColors.cardBg,
-        title: const Text('Upload temporariamente bloqueado'),
-        content: const Text(
-          'Os uploads estão restritos na sua região devido a requisitos de conformidade legal e verificação de direitos autorais.\n\n'
-          'Detetámos possíveis violações de direitos autorais e estamos a trabalhar ativamente para remover e bloquear todo o conteúdo protegido.\n\n'
-          'Em breve os uploads estarão disponíveis novamente para criadores verificados.',
-          style: TextStyle(fontSize: 13, color: AppColors.textMuted, height: 1.5),
+        title: Text(c.t('disclaimer.uploadTitle')),
+        content: Text(
+          '${c.t('disclaimer.uploadBody1')}\n\n${c.t('disclaimer.uploadBody2')}\n\n${c.t('disclaimer.uploadBody3')}',
+          style: const TextStyle(fontSize: 13, color: AppColors.textMuted, height: 1.5),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c), child: const Text('Entendido')),
+          TextButton(onPressed: () => Navigator.pop(c), child: Text(c.t('disclaimer.uploadClose'))),
         ],
       ),
     );
@@ -221,11 +220,11 @@ class _AppDrawer extends ConsumerWidget {
               child: ListView(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 children: [
-                  _sectionLabel('Menu'),
+                  _sectionLabel(context, 'Menu'),
                   ..._menu.map((item) => _navTile(
                         context,
                         icon: item['icon'] as IconData,
-                        label: item['label'] as String,
+                        label: context.t(item['key'] as String),
                         active: isActive(location, item['path'] as String),
                         onTap: () {
                           Navigator.pop(context);
@@ -233,11 +232,11 @@ class _AppDrawer extends ConsumerWidget {
                         },
                       )),
                   const SizedBox(height: 10),
-                  _sectionLabel('Conta'),
+                  _sectionLabel(context, context.t('account.title')),
                   _navTile(
                     context,
                     icon: Icons.download_rounded,
-                    label: 'Downloads',
+                    label: context.t('nav.downloads'),
                     active: isActive(location, '/main/downloads'),
                     trailing: !canDownload
                         ? Container(
@@ -258,7 +257,7 @@ class _AppDrawer extends ConsumerWidget {
                   _navTile(
                     context,
                     icon: Icons.cloud_upload_rounded,
-                    label: 'Enviar conteúdo',
+                    label: context.t('nav.upload'),
                     active: false,
                     onTap: () {
                       Navigator.pop(context);
@@ -268,7 +267,7 @@ class _AppDrawer extends ConsumerWidget {
                   _navTile(
                     context,
                     icon: Icons.bolt_rounded,
-                    label: 'Assinar Premium',
+                    label: context.t('nav.upgrade'),
                     active: isActive(location, '/main/plans'),
                     trailing: !isPremium
                         ? Container(
@@ -285,7 +284,7 @@ class _AppDrawer extends ConsumerWidget {
                   _navTile(
                     context,
                     icon: Icons.settings_rounded,
-                    label: 'Conta',
+                    label: context.t('nav.account'),
                     active: isActive(location, '/main/account'),
                     onTap: () {
                       Navigator.pop(context);
@@ -308,9 +307,9 @@ class _AppDrawer extends ConsumerWidget {
                 child: Row(children: [
                   const Icon(Icons.email_outlined, size: 14, color: AppColors.primary),
                   const SizedBox(width: 8),
-                  Column(crossAxisAlignment: CrossAxisAlignment.start, children: const [
-                    Text('Denunciar direitos autorais', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: AppColors.textMuted)),
-                    Text('pixgoplatform@outlook.com', style: TextStyle(fontFamily: 'monospace', fontSize: 10.5, color: AppColors.primary, fontWeight: FontWeight.w700)),
+                  Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(context.t('contact.report'), style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: AppColors.textMuted)),
+                    Text(context.t('contact.email'), style: const TextStyle(fontFamily: 'monospace', fontSize: 10.5, color: AppColors.primary, fontWeight: FontWeight.w700)),
                   ]),
                 ]),
               ),
@@ -319,7 +318,7 @@ class _AppDrawer extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(6, 0, 6, 8),
               child: ListTile(
                 leading: const Icon(Icons.logout_rounded, size: 19, color: AppColors.textMuted),
-                title: const Text('Sair', style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
+                title: Text(context.t('nav.signOut'), style: const TextStyle(fontSize: 13, color: AppColors.textMuted)),
                 dense: true,
                 onTap: () async {
                   Navigator.pop(context);
@@ -334,7 +333,7 @@ class _AppDrawer extends ConsumerWidget {
     );
   }
 
-  Widget _sectionLabel(String text) => Padding(
+  Widget _sectionLabel(BuildContext context, String text) => Padding(
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
         child: Text(text.toUpperCase(),
             style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1, color: AppColors.textMuted)),

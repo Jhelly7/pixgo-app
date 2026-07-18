@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/models.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_client.dart';
@@ -53,8 +54,8 @@ class _MyListScreenState extends ConsumerState<MyListScreen> {
           const Icon(Icons.bookmark_rounded, color: AppColors.primary, size: 22),
           const SizedBox(width: 8),
           Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Minha Lista', style: TextStyle(fontFamily: AppTheme.fontDisplay, fontSize: 18, fontWeight: FontWeight.w800)),
-            Text('${_items.length} títulos salvos', style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+            Text(context.t('myList.title'), style: TextStyle(fontFamily: AppTheme.fontDisplay, fontSize: 18, fontWeight: FontWeight.w800)),
+            Text('${_items.length} ${context.t('myList.saved')}', style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
           ]),
         ]),
         const SizedBox(height: 16),
@@ -66,14 +67,14 @@ class _MyListScreenState extends ConsumerState<MyListScreen> {
                       child: Column(mainAxisSize: MainAxisSize.min, children: [
                         const Icon(Icons.bookmark_outline, size: 32, color: AppColors.textMuted),
                         const SizedBox(height: 10),
-                        const Text('Sua lista está vazia'),
+                        Text(context.t('myList.empty')),
                         const SizedBox(height: 4),
-                        const Text('Adicione filmes e séries para assistir mais tarde.',
-                            style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                        Text(context.t('myList.emptyDesc'),
+                            style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
                         const SizedBox(height: 14),
                         ElevatedButton(
                           onPressed: () => context.go('/main/catalog'),
-                          child: const Text('Explorar catálogo'),
+                          child: Text(context.t('myList.browse')),
                         ),
                       ]),
                     )

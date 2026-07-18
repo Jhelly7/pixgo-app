@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/models.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_client.dart';
@@ -78,8 +79,8 @@ class _PlansScreenState extends ConsumerState<PlansScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Assinar Premium', style: TextStyle(fontFamily: AppTheme.fontDisplay, fontSize: 20, fontWeight: FontWeight.w800)),
-          const Text('Tudo liberado. Um plano simples e direto.', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+          Text(context.t('plans.title'), style: TextStyle(fontFamily: AppTheme.fontDisplay, fontSize: 20, fontWeight: FontWeight.w800)),
+          Text(context.t('plans.subtitle'), style: const TextStyle(color: AppColors.textMuted, fontSize: 13)),
           const SizedBox(height: 16),
           if (isPremium)
             Container(
@@ -140,7 +141,7 @@ class _PlansScreenState extends ConsumerState<PlansScreen> {
                       child: ElevatedButton.icon(
                         onPressed: () => context.push('/main/plans/checkout?plan=$type'),
                         icon: const Icon(Icons.bolt, size: 18),
-                        label: const Text('Assinar com USDT'),
+                        label: Text(context.t('plans.payUsdt')),
                       ),
                     ),
                   ]),
